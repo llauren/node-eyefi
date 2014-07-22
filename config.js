@@ -6,11 +6,11 @@ module.exports = {
 	// All cards should be listed here.
 	cards: {
 		// This is the Mac Address which can be found in the Settings.xml
-		'00185642b77d':{
+		'00185666499d':{
 			// This is the UploadKey as found in the Settings.xml
-			uploadkey: '50333eaad68ce9f73db40bad23a2952c', // required
-			folder: './pics/', // optional
-			//command: 'cat %s', // optional
+			uploadkey: '673060865a7a1d44e63bbf5399c13352', // required
+			// folder: './pics/', // optional
+			command: 'ls %s', // optional
 		},
 
 		'00185650f586' : {
@@ -28,5 +28,5 @@ module.exports = {
 	debug: true, // true or false
 
         // Posts the image to a webserver
-        post: "http://localhost/photos"
+ //       post: "http://localhost/photos"
 };

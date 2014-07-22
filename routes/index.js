@@ -14,19 +14,23 @@ var qs = require("querystring"),
     mime = require("mime"),
     url = require("url");
 
+// we probably need to do that logger thing again
+var Logger = require('devnull')
+    , logger = new Logger();
+
 function md5HexDigest(data)
 {
-  var string = new Buffer(data, "hex");
-  var hash = crypto.createHash("md5");
-  hash.update(string);
-  return hash.digest("hex");  
+    var string = new Buffer(data, "hex");
+    var hash = crypto.createHash("md5");
+    hash.update(string);
+    return hash.digest("hex");  
 }
 
 /*
  * Human index file :)
  */
 exports.index = function(req, res){
-  res.render('index', {layout: false});
+    res.render('index', {layout: false});
 };
 
 /*
@@ -34,94 +38,89 @@ exports.index = function(req, res){
  */
 
 exports.upload = function(req, res) {
-  var renderUpload = function(err, data) {
-    var obj = data["SOAP-ENV:Envelope"]["SOAP-ENV:Body"][0]["ns1:UploadPhoto"][0];
-    var folder = config.folder;
-    if(config.cards[obj.macaddress].folder) {
-      folder = config.cards[obj.macaddress].folder;
-    }
+    var renderUpload = function(err, data) {
+	var obj = data["SOAP-ENV:Envelope"]["SOAP-ENV:Body"][0]["ns1:UploadPhoto"][0];
+	var folder = config.folder;
+	if(config.cards[obj.macaddress].folder) {
+	    folder = config.cards[obj.macaddress].folder;
+	}
+	logger.info("Working on filename %s -> %s", req.files.filename.path, req.files.filename.name);
+	logger.info("Extracting to folder %s", folder);
 
-    fs.createReadStream(req.files.FILENAME.path)
-      .pipe(tar.Extract({ path: folder }))
-      .on("error", function (err) {
-        console.error("error here")
-      })
-      .on("end", function () {
-        var file = folder+req.files.FILENAME.filename.substr(0, req.files.FILENAME.filename.length -4);
-        if(config.cards[obj.macaddress].command) {
-          
-          console.log(file);
-          var command = util.format(config.cards[obj.macaddress].command, path.normalize(file));
-          console.log(command);
-          child = exec(command, function (error, stdout, stderr) {
-            console.log('stdout: ' + stdout);
-            console.log('stderr: ' + stderr);
-            if (error !== null) {
-              console.log('exec error: ' + error);
-            }
-          });
-        }
+	fs.createReadStream(req.files.FILENAME.path) 
+	    .pipe(tar.Extract({ path: folder }))
+	    .on("error", function (err) {
+		    logger.error("error while processing file %s", req.files.FILENAME.path);
+		    }
+	       )
+	    .on("end", function () {
+		    logger.log("Folder: %s", folder);
+		    var file = folder+req.files.FILENAME.name.substr(0, req.files.FILENAME.name.length -4);
+		    logger.log("File name: %s", file);
 
-        if(config.post) {
-          var settings = url.parse(config.post);
-          var request = new multiparter.request(http, {
-            host: settings.hostname,
-            port: settings.post, 
-            path: settings.pathname,
-            method: "POST"
-          });
+		    fs.unlink(req.files.FILENAME.path, function(err) {
+			if (err) logger.error("Couldn't delete file: %s", err);
+		    });
 
+		    if (config.cards[obj.macaddress].command) {
+			var command = util.format(config.cards[obj.macaddress].command, path.normalize(file));
+			logger.info("Executing command %s", command);
+			child = exec(command, function (error, stdout, stderr) {
+			    logger.log('stdout: ' + stdout);
+			    logger.log('stderr: ' + stderr);
+			    if (error !== null) {
+				logger.error('exec error: ', error);
+			    }
+			});
+		    }
 
-          request.addStream(
-'file', 
-path.basename(file),
-mime.lookup(file),
-fs.statSync(file).size,
-fs.createReadStream(file));
+		    if (config.post) {
+			var settings = url.parse(config.post);
+			var request = new multiparter.request(http, {
+			    host: settings.hostname,
+			    port: settings.post, 
+			    path: settings.pathname,
+			    method: "POST"
+			});
 
-          request.send(function(error, response) {
-  if (error) {
-        console.log(error);
-    }
+			request.addStream(
+				'file', 
+				path.basename(file),
+				mime.lookup(file),
+				fs.statSync(file).size,
+				fs.createReadStream(file));
 
-    var data = "";
+			request.send(function(error, response) {
+				if (error) {
+				    console.log(error);
+				}
 
-    response.setEncoding("utf8");
+				var data = "";
 
-    response.on("data", function(chunk) {
-        data += chunk;
-    });
+				response.setEncoding("utf8");
 
-    response.on("end", function() {
-        console.log("Data: " + data);
-    });
+				response.on("data", function(chunk) {
+				    data += chunk;
+				    });
 
-    response.on("error", function(error) {
-        console.log(error);
-    });
-          });
-/*          fs.readFile(file, function (err, data) {
-            console.log(err);
-            console.log(data);
-            request.post({uri: "http://localhost:3000/photos"
-            , body: data
-            , form: true
-              }, function (error, response, body) {
-	  	console.log(error);
-            });
-          });*/
-        }
-        console.log(req.socket._idleStart.getTime());
-        console.log(new Date().getTime());
-        console.log("\nFinished Upload successfully.");
-        res.render('uploadSuccess', {layout: false});
-      })
+				response.on("end", function() {
+				    //console.log("Data: " + data);
+				    });
 
-    
-  };
+				response.on("error", function(error) {
+				    console.log(error);
+				    });
+				});
+		    }
 
-  var decodedBody = decodeURIComponent(qs.stringify(qs.parse(req.body.SOAPENVELOPE)));
-  parser.parseString(decodedBody, renderUpload); 
+		    //console.log(req.socket._idleStart.getTime());
+		    logger.log("Finished Upload successfully.");
+		    res.render('uploadSuccess', {layout: false});
+	    })
+    };
+
+    var decodedBody = decodeURIComponent(qs.stringify(qs.parse(req.body.SOAPENVELOPE)));
+    parser.parseString(decodedBody, renderUpload); 
 };
 
 /*
@@ -129,82 +128,70 @@ fs.createReadStream(file));
  */
 
 exports.soap = function(req, res) {  
-  //api.eye.fi:80
-  //StartSession
-  //GetCardSettings
-  var renderStartSession = function(err, data) {
-    var obj = data["SOAP-ENV:Envelope"]["SOAP-ENV:Body"][0]["ns1:StartSession"][0];
-    console.log(obj.macaddress);
-    if(config.cards[obj.macaddress]) {
-      var credential = md5HexDigest(obj.macaddress + obj.cnonce + config.cards[obj.macaddress].uploadkey);
-      res.render('startSession', {layout:false, "credential": credential, "snonce":"d7eda40e374e8a34ee97554ebbfea0b5", "transfermodetimestamp": obj.transfermodetimestamp});  
+    //api.eye.fi:80
+    //StartSession
+    //GetCardSettings
+    var renderStartSession = function(err, data) {
+	var obj = data["SOAP-ENV:Envelope"]["SOAP-ENV:Body"][0]["ns1:StartSession"][0];
+	if(config.cards[obj.macaddress]) {
+	    var credential = md5HexDigest(obj.macaddress + obj.cnonce + config.cards[obj.macaddress].uploadkey);
+	    res.render('startSession', {layout:false, "credential": credential, "snonce":"8744904b7ea202439631c67186690a1e", "transfermodetimestamp": obj.transfermodetimestamp, "transfermode":obj.transfermode });  
+	}
+    };
+
+    var renderGetPhotoStatus = function(err, data) {
+	var obj = data["SOAP-ENV:Envelope"]["SOAP-ENV:Body"][0]["ns1:GetPhotoStatus"][0];
+	logger.log("Camera requests status of %s ", obj["filename"][0]);
+	if(config.cards[obj.macaddress]) {
+	    var credential = md5HexDigest(obj.macaddress + config.cards[obj.macaddress].uploadkey + "8744904b7ea202439631c67186690a1e");
+	    res.render('getPhotoStatus', {layout:false});
+	}
+    };
+
+    var renderMarkLastPhotoInRoll = function(err, data) {
+	res.render('markLastPhotoInRoll', {layout: false});
+    };
+
+    /*
+     * Get add data in the SOAP-Request
+     */
+    var getData = function(callback) {
+	var body = '';
+	var parsedbody = '';
+	req.on('data', function (data) {
+		body += data;
+		}); 
+	req.on('end', function () {
+		var decodedBody = decodeURIComponent(qs.stringify(qs.parse(body)));
+		parser.parseString(decodedBody, callback);
+		});
+    };
+
+    /*
+     * Decide what kind of SOAP request this was.
+     */
+    logger.info("SOAP action requested: %s", req.headers.soapaction);
+    switch(req.headers.soapaction.substr(5, req.headers.soapaction.length-6)) {
+
+	case "StartSession":
+	    logger.info("SOAP StartSession");
+	    //console.log(req.params);
+	    getData(renderStartSession);
+	    break;
+	case "GetPhotoStatus":
+	    logger.info("SOAP GetPhotoStatus");
+	    getData(renderGetPhotoStatus);
+	    break;
+	case "MarkLastPhotoInRoll":
+	    logger.info("SOAP MarkLastPhotoInRoll");
+	    getData(renderMarkLastPhotoInRoll);
+	    break;
+	default:
+	    logger.warning("Different request - We don't really know what to do!", req.headers);
+	    var length = req.headers.soapaction.length;
+	    // console.log(length-2);
+	    logger.notice("Unknown SOAP action: %s", req.headers.soapaction.substr(5, req.headers.soapaction.length-6));
+	    break;
     }
-  };
-
-  var renderGetPhotoStatus = function(err, data) {
-    var obj = data["SOAP-ENV:Envelope"]["SOAP-ENV:Body"][0]["ns1:GetPhotoStatus"][0];
-    if(config.cards[obj.macaddress]) {
-      var credential = md5HexDigest(obj.macaddress + config.cards[obj.macaddress].uploadkey + "d7eda40e374e8a34ee97554ebbfea0b5");
-      res.render('getPhotoStatus', {layout:false});
-    }
-  };
-
-  var renderMarkLastPhotoInRoll = function(err, data) {
-    res.render('markLastPhotoInRoll', {layout: false});
-  };
-  /*
-   * Get add data in the SOAP-Request
-   */
-  var getData = function(callback) {
-    var body = '';
-    var parsedbody = '';
-    req.on('data', function (data) {
-      body += data;
-    }); 
-    req.on('end', function () {
-      var decodedBody = decodeURIComponent(qs.stringify(qs.parse(body)));
-      parser.parseString(decodedBody, callback);
-    });
-  };
-
-  /*
-   * Decide what kind of SOAP request this was.
-   */
-  switch(req.headers.soapaction.substr(5, req.headers.soapaction.length-6)) {
-    case "StartSession":
-      console.log("StartSession");
-      //console.log(req.params);
-      getData(renderStartSession);
-      break;
-    case "GetPhotoStatus":
-      console.log("GetPhotoStatus");
-      getData(renderGetPhotoStatus);
-      break;
-    case "MarkLastPhotoInRoll":
-      console.log("MarkLastPhotoInRoll");
-      getData(renderMarkLastPhotoInRoll);
-      break;
-    default:
-      console.log("Different request - We don't really know what to do!", req.headers);
-      var length = req.headers.soapaction.length;
-      console.log(length-2);
-      console.log(req.headers.soapaction.substr(5, req.headers.soapaction.length-6));
-      break;
-  }
 };
 
-// Mitschnitt
-// POST /loc/json HTTP/1.1
-// Host: www.google.com
-// User-Agent: Mozilla/5.0 (Windows; U; Windows NT 6.1; de; rv:1.9.2.25) Gecko/20111212 Firefox/3.6.25
-// Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
-// Accept-Language: de-de,de;q=0.8,en-us;q=0.5,en;q=0.3
-// Accept-Encoding: gzip,deflate
-// Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
-// Keep-Alive: 115
-// Connection: keep-alive
-// Content-Length: 1067
-// Content-Type: text/plain; charset=UTF-8
-// Pragma: no-cache
-// Cache-Control: no-cache
-// {"version":"1.1.0","request_address":true,"access_token":"2:L7MQY8kub3DN_do_:3pusanbwJID_Zu6q","wifi_towers":[{"mac_address":"7c-4f-b5-21-ed-94","ssid":"INTERNET","signal_strength":-33},{"mac_address":"88-25-2c-54-30-07","ssid":"WLAN-543029","signal_strength":-51},{"mac_address":"00-25-5e-74-e4-db","ssid":"ALICE-WLANDA","signal_strength":-79},{"mac_address":"28-cf-da-b8-d5-cd","ssid":"redbirn","signal_strength":-85},{"mac_address":"00-26-4d-3c-94-1f","ssid":"EasyBox-3C9439","signal_strength":-73},{"mac_address":"00-1d-19-eb-91-47","ssid":"WLAN-EB9166","signal_strength":-86},{"mac_address":"00-12-bf-b2-b7-c5","ssid":"WLAN-B2B705","signal_strength":-80},{"mac_address":"88-25-2c-21-a6-ef","ssid":"EasyBox-21A645","signal_strength":-79},{"mac_address":"04-c0-6f-d4-7d-14","ssid":"WLAN-7D1407","signal_strength":-91},{"mac_address":"7c-4f-b5-83-f8-f7","ssid":"Toner_Schoerke","signal_strength":-67},{"mac_address":"f0-7d-68-8e-59-2e","ssid":"Lian","signal_strength":-89},{"mac_address":"bc-05-43-e2-a8-e2","ssid":"FRITZ!Box Fon WLAN 7112","signal_strength":-76}]}

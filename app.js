@@ -1,26 +1,25 @@
 try {
-  process.setgid("prismabox");
-}
-catch (err) {
-  console.log("Setting Group failed");
+    process.setgid("pi");
+} catch (err) {
+    console.log("Setting Group failed");
 }
 
 try {
-  process.setuid("prismabox");
-}
-catch (err) {
-  console.log("Setting User failed");
+    process.setuid("pi");
+} catch (err) {
+    console.log("Setting User failed");
 }
 
 /**
  * Module dependencies.
- */
+    Code below is not done according to the devnull documentation...
+
 require("./logger").init();
 var logger = require('./logger').logger;
-/*logger.use(require('devnull/transports/stream'), {
-    stream: require('fs').createWriteStream('loggers.log')
-});*/
+ */
 
+var Logger = require("devnull")
+  , logger = new Logger();
 
 var express = require('express')
   , routes = require('./routes')
@@ -35,45 +34,47 @@ var app = module.exports = express.createServer();
 //var progressBars = {};
 
 app.configure(function(){
-  app.use(function(req, res, next){
-  	console.log(req.connection.remoteAddress);
-    if (req.url == '/api/soap/eyefilm/v1/upload') {
-      var form = new formidable.IncomingForm();
-      var startTime = new Date();
-      var old = 0;
-      console.log("Starting upload");  
-      //We can't use progressbars because there are two files at the same time.
-      form.on('progress', function(received, expected) {
-        //console.log(this.requestHeader);
-        if(old != Math.round(received*100/expected) && Math.round(received*100/expected) % 10 == 0)
-         console.log(Math.round(received*100/expected));
-        old = Math.round(received*100/expected)
-      });
-      form.on('end', function() {
-        var timeTaken = (new Date().getTime() - startTime.getTime()) / 1000;
-        var kbs = ((req.headers['content-length']/1024)/timeTaken);
-        console.log(timeTaken + " - " + kbs + "kb/s");
-//        logger.log((req.headers['content-length']/1024) + " - "+ timeTaken + " (" + kbs + "kb/s)");
-      });
-      form.parse(req);
-    }
-    next();
-  });
-  app.set('views', __dirname + '/views');
-  app.register("html", require('ejs'));
-  app.set('view engine', 'html');
-  app.use(express.bodyParser());
-  app.use(express.methodOverride());
-  app.use(app.router);
-  app.use(express.static(__dirname + '/public'));
+	app.use(function(req, res, next) {
+	    logger.info("New request from %s to %s", req.connection.remoteAddress, req.url);
+	    if (req.url == '/api/soap/eyefilm/v1/upload') {
+		var form = new formidable.IncomingForm();
+		var startTime = new Date();
+		var old = 0;
+		logger.log("Receiving data");  
+
+		form.on('progress', function(received, expected) {
+		    //console.log(this.requestHeader);
+		    if(old != Math.round(received*100/expected) && Math.round(received*100/expected) % 10 == 0)
+			logger.log("  received %d %", Math.round(received*100/expected));
+		    old = Math.round(received*100/expected)
+		});
+
+		form.on('end', function() {
+		    var timeTaken = (new Date().getTime() - startTime.getTime()) / 1000;
+		    var kbs = ((req.headers['content-length']/1024)/timeTaken);
+		    logger.log("Received %d kB in %d seconds (%d kB/s)", (req.headers['content-length']/1024), timeTaken, kbs);
+		    });
+
+		form.parse(req); // <--- this probably writes the income file to /tmp
+	    }
+	    next();
+	});
+
+	app.set('views', __dirname + '/views');
+	app.register("html", require('ejs'));
+	app.set('view engine', 'html');
+	app.use(express.bodyParser());
+	app.use(express.methodOverride());
+	app.use(app.router);
+	app.use(express.static(__dirname + '/public'));
 });
 
 app.configure('development', function(){
-  app.use(express.errorHandler({ dumpExceptions: true, showStack: true }));
+	app.use(express.errorHandler({ dumpExceptions: true, showStack: true }));
 });
 
 app.configure('production', function(){
-  app.use(express.errorHandler()); 
+	app.use(express.errorHandler()); 
 });
 
 // Routes
@@ -83,4 +84,4 @@ app.post('/api/soap/eyefilm/v1', routes.soap);
 app.post('/api/soap/eyefilm/v1/upload', routes.upload);
 
 app.listen(59278);
-console.log("The Node-Eyefi Server was successfully started and is listening.");
+logger.info("The Node-Eyefi Server was successfully started and is listening.");
