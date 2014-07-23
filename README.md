@@ -24,11 +24,11 @@ Insert your Eye-Fi card into  the previously mentioned computer. On the Eye-Fi c
 installer files for the card. Install the Eye-fi software. You'll also need to create an account at Eye-fi. 
 
 Click the cog wheel icon by the Eye-Fi Card thingy on the left. This'll open up the card's options.
-On the `**Networks** &raquo; Private networks` tab, add your wireless network information. On the `Direct
+On the `Networks / Private networks` tab, add your wireless network information. On the `Direct
 Mode` tab, uncheck Direct Mode network. On the `Public Hotspots` tab, remove Connect to Hotspots 
 (because this disables Relayed Transfers). 
 
-On the `**Photos** &raquo; Computer` tab, enable Upload all photos. On the `Online` tab, disable share
+On the `Photos / Computer` tab, enable Upload all photos. On the `Online` tab, disable share
 photos online. 
 
 Save and close. 
