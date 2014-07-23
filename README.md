@@ -21,11 +21,20 @@ Locate a computer running a Proprietary OS (Mac OSX, Windows). *Temporarily rena
 whatever your server is going to be called. Yeah, i know. It is silly. 
 
 Insert your Eye-Fi card into  the previously mentioned computer. On the Eye-Fi card, there should be 
-installer files for the card. You'll also need to create an account at Eye-fi. Remove the option to
-upload via the Eye-fi servers and check that you want Direct upload of the pictures. 
+installer files for the card. Install the Eye-fi software. You'll also need to create an account at Eye-fi. 
 
-Once you're that far, fetch the card's MAC address and upload code. You'll need it when configuring
-this app. 
+Click the cog wheel icon by the Eye-Fi Card thingy on the left. This'll open up the card's options.
+On the `**Networks** &raquo; Private networks` tab, add your wireless network information. On the `Direct
+Mode` tab, uncheck Direct Mode network. On the `Public Hotspots` tab, remove Connect to Hotspots 
+(because this disables Relayed Transfers). 
+
+On the `**Photos** &raquo; Computer` tab, enable Upload all photos. On the `Online` tab, disable share
+photos online. 
+
+Save and close. 
+
+Once you're that far, click the Eye-fi menu bar icon (close to the system clock) and write down the 
+card's MAC address and upload code. You'll need it when configuring this app. 
 
 Save and exit. Rename your computer back to its original name.
 
