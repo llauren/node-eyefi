@@ -13,6 +13,7 @@ module.exports = {
 			command: 'ls %s', // optional
 		},
 
+		// if you have more cards, you can add them here
 		'00185650f586' : {
 			uploadkey: 'f3bc423f3bda7247e0807e844baebdcc', // required
 		},
